@@ -19,7 +19,7 @@ jobs:
             target: x86_64-unknown-linux-musl
             artifact_suffix: linux-x86_64
             binary_name: clio
-            use_cross: false
+            use_cross: true
 
           - os: macos-13
             target: x86_64-apple-darwin
