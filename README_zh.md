@@ -14,6 +14,7 @@
 
 ```bash
 cargo install --path .
+sudo cp ~/.cargo/bin/styx /usr/bin/
 ```
 
 或从源码构建：

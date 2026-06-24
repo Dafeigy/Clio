@@ -5,8 +5,9 @@ use std::io::{self, IsTerminal};
 /// When stdout is a terminal and `show_binary` is false, binary values
 /// are replaced with "(omitted binary data)". When piped, all data is
 /// passed through raw.
-pub fn print_kv(key: &[u8], value: &[u8], delimiter: &str, show_binary: bool) {
+pub fn print_kv(key: &[u8], value: &[u8], delimiter: &str, show_binary: bool, max_value_width: usize) {
     if show_binary || !io::stdout().is_terminal() {
+        // When piped or --show-binary: pass everything through, never truncate
         println!(
             "{}{delimiter}{}",
             String::from_utf8_lossy(key),
@@ -15,8 +16,26 @@ pub fn print_kv(key: &[u8], value: &[u8], delimiter: &str, show_binary: bool) {
     } else {
         let key_str = safe_string(key);
         let val_str = safe_string(value);
-        println!("{}{delimiter}{}", key_str, val_str);
+        println!(
+            "{}{delimiter}{}",
+            key_str,
+            truncate_value(&val_str, max_value_width)
+        );
     }
+}
+
+/// Truncate a value string to `max_width` visible characters, appending "..."
+/// when the string is longer.  A width of 0 means no truncation.
+fn truncate_value(s: &str, max_width: usize) -> std::borrow::Cow<'_, str> {
+    if max_width == 0 {
+        return std::borrow::Cow::Borrowed(s);
+    }
+    // Count chars (not bytes) to stay under the limit
+    if s.chars().count() <= max_width {
+        return std::borrow::Cow::Borrowed(s);
+    }
+    let truncated: String = s.chars().take(max_width).chain("...".chars()).collect();
+    std::borrow::Cow::Owned(truncated)
 }
 
 /// Prints a single value to stdout.

@@ -14,6 +14,7 @@
 
 ```bash
 cargo install --path .
+sudo cp ~/.cargo/bin/styx /usr/bin/
 ```
 
 Or build from source:

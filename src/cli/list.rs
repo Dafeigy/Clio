@@ -27,6 +27,12 @@ pub struct ListArgs {
     /// Show binary values instead of omitting them
     #[arg(short = 'b', long)]
     pub show_binary: bool,
+
+    /// Max displayed value width in terminal (0 = no truncation, default: 8).
+    /// When a value exceeds this length, it is cut to `width` chars and
+    /// suffixed with "...".  Piped output is never truncated.
+    #[arg(short = 'w', long, default_value = "8")]
+    pub max_value_width: usize,
 }
 
 pub fn run(args: ListArgs) -> anyhow::Result<()> {
@@ -55,7 +61,7 @@ pub fn run(args: ListArgs) -> anyhow::Result<()> {
     } else {
         let pairs = store.iter(args.reverse)?;
         for (k, v) in pairs {
-            format::print_kv(&k, &v, &args.delimiter, args.show_binary);
+            format::print_kv(&k, &v, &args.delimiter, args.show_binary, args.max_value_width);
         }
     }
 
