@@ -49,11 +49,6 @@ strsim = "0.11"
 # Hostname (for device ID in sync manifest)
 hostname = "0.4"
 
-# Force vendored (from-source) OpenSSL build — eliminates system libssl
-# dependency at compile time. Required for musl cross-compilation because
-# there is no musl-targeted libssl to find via pkg-config.
-openssl = { version = "0.10", features = ["vendored"] }
-
 [dev-dependencies]
 tempfile = "3"
 tokio-test = "0.4"
@@ -63,3 +58,11 @@ strip = true
 lto = true
 codegen-units = 1
 opt-level = "s"
+
+# musl cross-compilation: native-tls → openssl-sys needs OpenSSL headers,
+# but there's no musl-targeted libssl-dev. The "vendored" feature makes
+# openssl-sys compile its own OpenSSL from source — no system lib needed.
+# cfg-gated to Linux because macOS (Security Framework) and Windows
+# (SChannel) don't use OpenSSL at all.
+[target.'cfg(target_os = "linux")'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
