@@ -7,8 +7,8 @@ use std::path::Path;
 /// Configuration for the S3 backend.
 ///
 /// Values are resolved with this priority (highest first):
-/// 1. `STYX_S3_*` environment variables
-/// 2. Config file (`~/.config/styx/config.toml`)
+/// 1. `CLIO_S3_*` environment variables
+/// 2. Config file (`~/.config/clio/config.toml`)
 /// 3. Built-in defaults (endpoint, prefix, region)
 pub struct S3Config {
     pub endpoint: String,
@@ -22,43 +22,43 @@ pub struct S3Config {
 impl S3Config {
     /// Load config: config file first, then override with any set env vars.
     pub fn load() -> anyhow::Result<Self> {
-        let file_cfg = crate::config::StyxConfig::load()?;
+        let file_cfg = crate::config::ClioConfig::load()?;
 
         // Each value: env var → config file → hard-coded default
         let endpoint = resolve(
-            "STYX_S3_ENDPOINT",
+            "CLIO_S3_ENDPOINT",
             file_cfg.s3.endpoint.as_deref(),
             "https://s3.amazonaws.com",
         );
 
         let bucket_name = resolve_required(
-            "STYX_S3_BUCKET",
+            "CLIO_S3_BUCKET",
             file_cfg.s3.bucket.as_deref(),
-            "S3 bucket is required. Set it in ~/.config/styx/config.toml ([s3] bucket) or the STYX_S3_BUCKET env var.",
+            "S3 bucket is required. Set it in ~/.config/clio/config.toml ([s3] bucket) or the CLIO_S3_BUCKET env var.",
         )?;
 
         let prefix = resolve(
-            "STYX_S3_PREFIX",
+            "CLIO_S3_PREFIX",
             file_cfg.s3.prefix.as_deref(),
-            "styx/",
+            "clio/",
         );
 
         let region = resolve(
-            "STYX_S3_REGION",
+            "CLIO_S3_REGION",
             file_cfg.s3.region.as_deref(),
             "us-east-1",
         );
 
         let access_key = resolve_required(
-            "STYX_S3_ACCESS_KEY",
+            "CLIO_S3_ACCESS_KEY",
             file_cfg.s3.access_key.as_deref(),
-            "S3 access key is required. Set it in ~/.config/styx/config.toml ([s3] access_key) or the STYX_S3_ACCESS_KEY env var.",
+            "S3 access key is required. Set it in ~/.config/clio/config.toml ([s3] access_key) or the CLIO_S3_ACCESS_KEY env var.",
         )?;
 
         let secret_key = resolve_required(
-            "STYX_S3_SECRET_KEY",
+            "CLIO_S3_SECRET_KEY",
             file_cfg.s3.secret_key.as_deref(),
-            "S3 secret key is required. Set it in ~/.config/styx/config.toml ([s3] secret_key) or the STYX_S3_SECRET_KEY env var.",
+            "S3 secret key is required. Set it in ~/.config/clio/config.toml ([s3] secret_key) or the CLIO_S3_SECRET_KEY env var.",
         )?;
 
         Ok(Self { endpoint, bucket_name, prefix, region, access_key, secret_key })

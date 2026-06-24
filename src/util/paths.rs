@@ -1,13 +1,13 @@
 use std::path::{Path, PathBuf};
 
-/// Returns the base data directory for styx databases.
+/// Returns the base data directory for clio databases.
 ///
-/// Respects `STYX_DATA_DIR` env var for custom locations (useful for testing).
-/// On Linux:   `~/.local/share/styx/`
-/// On macOS:   `~/Library/Application Support/styx/`
-/// On Windows: `C:\Users\<user>\AppData\Local\styx\`
+/// Respects `CLIO_DATA_DIR` env var for custom locations (useful for testing).
+/// On Linux:   `~/.local/share/clio/`
+/// On macOS:   `~/Library/Application Support/clio/`
+/// On Windows: `C:\Users\<user>\AppData\Local\clio\`
 pub fn data_dir() -> anyhow::Result<PathBuf> {
-    if let Ok(custom) = std::env::var("STYX_DATA_DIR") {
+    if let Ok(custom) = std::env::var("CLIO_DATA_DIR") {
         let dir = PathBuf::from(custom);
         std::fs::create_dir_all(&dir)?;
         return Ok(dir);
@@ -15,7 +15,7 @@ pub fn data_dir() -> anyhow::Result<PathBuf> {
 
     let dir = dirs::data_dir()
         .ok_or_else(|| anyhow::anyhow!("could not determine XDG data directory"))?
-        .join("styx");
+        .join("clio");
 
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
@@ -23,7 +23,7 @@ pub fn data_dir() -> anyhow::Result<PathBuf> {
 
 /// Returns the path to a specific database file.
 ///
-/// Example: `db_path("work")` → `~/.local/share/styx/work.redb`
+/// Example: `db_path("work")` → `~/.local/share/clio/work.redb`
 pub fn db_path(name: &str) -> anyhow::Result<PathBuf> {
     Ok(data_dir()?.join(format!("{}.redb", name)))
 }

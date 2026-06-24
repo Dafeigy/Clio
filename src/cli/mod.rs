@@ -30,12 +30,12 @@ fn help_styles() -> Styles {
         )
 }
 
-/// Styx, a personal key value store.
+/// Clio, a personal key value store.
 #[derive(Parser)]
 #[command(
-    name = "styx",
+    name = "clio",
     version,
-    about = "Styx, a personal key value store.",
+    about = "Clio, a personal key value store.",
     styles = help_styles()
 )]
 pub struct Cli {
@@ -81,7 +81,7 @@ pub enum Command {
     /// Show sync status (local vs remote diff).
     SyncStatus,
 
-    /// Create a config file template at ~/.config/styx/config.toml.
+    /// Create a config file template at ~/.config/clio/config.toml.
     InitConfig,
 }
 

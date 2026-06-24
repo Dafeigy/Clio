@@ -36,7 +36,7 @@ fn color_usage(text: &str, base: Style, bracket: Style) -> String {
     out
 }
 
-/// Print the main help page (bare `styx`, `styx --help`, or `styx -h`).
+/// Print the main help page (bare `clio`, `clio --help`, or `clio -h`).
 pub fn print_help() {
     use std::io::Write;
 
@@ -47,14 +47,14 @@ pub fn print_help() {
     let green_style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightGreen)));
     let gray_style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightBlack)));
 
-    let _ = writeln!(std::io::stdout(), "  Styx, a personal key value store with s3 sync.\n");
+    let _ = writeln!(std::io::stdout(), "  Clio, a personal key value store with s3 sync.\n");
 
     // ── USAGE ──
     let _ = writeln!(std::io::stdout(), "  {}", styled("USAGE", heading_style));
     let _ = writeln!(
         std::io::stdout(),
         "    {}",
-        color_usage("styx [command] [--flags]", pink_style, gray_style),
+        color_usage("clio [command] [--flags]", pink_style, gray_style),
     );
     let _ = writeln!(std::io::stdout());
 
@@ -104,12 +104,12 @@ pub fn print_help() {
 
     let _ = writeln!(
         std::io::stdout(),
-        "    {:<23} Help for styx",
+        "    {:<23} Help for clio",
         styled("-h --help", green_style),
     );
     let _ = writeln!(
         std::io::stdout(),
-        "    {:<23} Version for styx",
+        "    {:<23} Version for clio",
         styled("-V --version", green_style),
     );
 }

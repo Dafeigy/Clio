@@ -1,4 +1,4 @@
-# Styx — Architecture Design
+# Clio — Architecture Design
 
 > A cross-device-synced key-value store CLI tool built in Rust, inspired by [charmbracelet/skate](https://github.com/charmbracelet/skate).
 
@@ -6,7 +6,7 @@
 
 ## 1. Overview
 
-Styx is a personal key-value store accessible from the command line. It stores data locally in an embedded database and supports **cross-device synchronization** via S3-compatible object storage. The design is based on the Go-based `skate` CLI but reimagined in Rust with sync as a first-class feature.
+Clio is a personal key-value store accessible from the command line. It stores data locally in an embedded database and supports **cross-device synchronization** via S3-compatible object storage. The design is based on the Go-based `skate` CLI but reimagined in Rust with sync as a first-class feature.
 
 ### Core Principles
 
@@ -20,17 +20,17 @@ Styx is a personal key-value store accessible from the command line. It stores d
 ## 2. Command Surface
 
 ```
-styx set KEY[@DB] [VALUE]         # Set a key; reads stdin if VALUE omitted
-styx get KEY[@DB]                 # Get a key's value, prints to stdout
-styx delete KEY[@DB]              # Delete a key (aliases: del, rm)
-styx list [@DB]                   # List key-value pairs
-styx list-dbs                     # List all databases (aliases: ls-db)
-styx delete-db @DB                # Delete an entire database (aliases: del-db, rm-db)
+clio set KEY[@DB] [VALUE]         # Set a key; reads stdin if VALUE omitted
+clio get KEY[@DB]                 # Get a key's value, prints to stdout
+clio delete KEY[@DB]              # Delete a key (aliases: del, rm)
+clio list [@DB]                   # List key-value pairs
+clio list-dbs                     # List all databases (aliases: ls-db)
+clio delete-db @DB                # Delete an entire database (aliases: del-db, rm-db)
 
-styx push [@DB]                   # Upload local DB to S3
-styx pull [@DB]                   # Download remote DB from S3
-styx sync                         # Bidirectional sync of all DBs
-styx sync-status                  # Show sync status (local vs remote diffs)
+clio push [@DB]                   # Upload local DB to S3
+clio pull [@DB]                   # Download remote DB from S3
+clio sync                         # Bidirectional sync of all DBs
+clio sync-status                  # Show sync status (local vs remote diffs)
 ```
 
 ### Key Format
@@ -137,7 +137,7 @@ is-terminal = "0.4"
 Each database (`@work`, `@default`, etc.) maps to a single `.redb` file on disk:
 
 ```
-~/.local/share/styx/
+~/.local/share/clio/
 ├── default.redb
 ├── work.redb
 ├── secrets.redb
@@ -248,7 +248,7 @@ Each database entry records:
 
 ### 5.4 Sync Operations
 
-#### `styx push [@DB]`
+#### `clio push [@DB]`
 
 ```
 1. Compute local checksum of <db>.redb
@@ -260,7 +260,7 @@ Each database entry records:
 7. Upload manifest.json to S3
 ```
 
-#### `styx pull [@DB]`
+#### `clio pull [@DB]`
 
 ```
 1. Fetch remote manifest.json from S3
@@ -270,7 +270,7 @@ Each database entry records:
 5. Update local .sync-manifest.json
 ```
 
-#### `styx sync`
+#### `clio sync`
 
 ```
 1. Fetch remote manifest
@@ -284,7 +284,7 @@ Each database entry records:
 3. Report summary of actions taken
 ```
 
-#### `styx sync-status`
+#### `clio sync-status`
 
 ```
 1. Fetch remote manifest
@@ -298,7 +298,7 @@ Each database entry records:
 Conflicts occur when both local and remote have changed since the last sync:
 
 ```
-styx sync
+clio sync
   ⚠ work: both local and remote have changed (diverged)
   Use --force push|pull to resolve
 ```
@@ -321,12 +321,12 @@ pub struct S3Backend {
 impl S3Backend {
     pub fn from_env() -> Result<Self>;
     // Reads:
-    //   STYX_S3_ENDPOINT   (default: s3.amazonaws.com)
-    //   STYX_S3_BUCKET
-    //   STYX_S3_PREFIX     (default: "styx/")
-    //   STYX_S3_REGION     (default: us-east-1)
-    //   STYX_S3_ACCESS_KEY
-    //   STYX_S3_SECRET_KEY
+    //   CLIO_S3_ENDPOINT   (default: s3.amazonaws.com)
+    //   CLIO_S3_BUCKET
+    //   CLIO_S3_PREFIX     (default: "clio/")
+    //   CLIO_S3_REGION     (default: us-east-1)
+    //   CLIO_S3_ACCESS_KEY
+    //   CLIO_S3_SECRET_KEY
 
     pub async fn get_manifest(&self) -> Result<SyncManifest>;
     pub async fn put_manifest(&self, manifest: &SyncManifest) -> Result<()>;
@@ -342,13 +342,13 @@ impl S3Backend {
 ### 6.1 `set` command
 
 ```
-User: styx set api-key@secrets sk-abc123
+User: clio set api-key@secrets sk-abc123
          │
          ▼
     cli/set.rs: parse "api-key@secrets" → key=b"api-key", db="secrets"
          │
          ▼
-    store::Store::open("secrets") → opens ~/.local/share/styx/secrets.redb
+    store::Store::open("secrets") → opens ~/.local/share/clio/secrets.redb
          │
          ▼
     store.set(b"api-key", b"sk-abc123")
@@ -360,7 +360,7 @@ User: styx set api-key@secrets sk-abc123
 ### 6.2 `get` command
 
 ```
-User: styx get api-key@secrets
+User: clio get api-key@secrets
          │
          ▼
     cli/get.rs: parse → key=b"api-key", db="secrets"
@@ -378,7 +378,7 @@ User: styx get api-key@secrets
 ### 6.3 `push` command
 
 ```
-User: styx push secrets
+User: clio push secrets
          │
          ▼
     cli/sync.rs: push("secrets")
@@ -388,7 +388,7 @@ User: styx push secrets
          │
     ┌────────────────────────────────────┐
     │ 1. Compute local SHA-256            │
-    │    of ~/.local/share/styx/          │
+    │    of ~/.local/share/clio/          │
     │    secrets.redb                     │
     │                                     │
     │ 2. S3Backend::get_manifest()        │
@@ -422,7 +422,7 @@ User: styx push secrets
 | 0.3 | Implement `util/paths.rs` — XDG data directory resolution | S |
 | 0.4 | Implement `util/format.rs` — terminal-aware printing | S |
 
-**Milestone:** Project compiles, `styx --help` works (empty commands).
+**Milestone:** Project compiles, `clio --help` works (empty commands).
 
 ---
 
@@ -467,7 +467,7 @@ User: styx push secrets
 | 3.1 | Integration tests for all CLI commands | L |
 | 3.2 | Unit tests for sync manifest logic | M |
 | 3.3 | Error messages: user-friendly output on S3 auth failures | S |
-| 3.4 | Add `styx config` command for setting S3 credentials interactively | M |
+| 3.4 | Add `clio config` command for setting S3 credentials interactively | M |
 | 3.5 | Binary release build configuration (strip, LTO, etc.) | S |
 | 3.6 | README with installation and usage docs | M |
 
@@ -487,12 +487,12 @@ User: styx push secrets
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `STYX_S3_ENDPOINT` | S3-compatible endpoint URL | `https://s3.amazonaws.com` |
-| `STYX_S3_BUCKET` | Bucket name | *(required)* |
-| `STYX_S3_PREFIX` | Object key prefix within bucket | `styx/` |
-| `STYX_S3_REGION` | AWS / S3 region | `us-east-1` |
-| `STYX_S3_ACCESS_KEY` | Access key ID | *(from AWS SDK cred chain)* |
-| `STYX_S3_SECRET_KEY` | Secret access key | *(from AWS SDK cred chain)* |
+| `CLIO_S3_ENDPOINT` | S3-compatible endpoint URL | `https://s3.amazonaws.com` |
+| `CLIO_S3_BUCKET` | Bucket name | *(required)* |
+| `CLIO_S3_PREFIX` | Object key prefix within bucket | `clio/` |
+| `CLIO_S3_REGION` | AWS / S3 region | `us-east-1` |
+| `CLIO_S3_ACCESS_KEY` | Access key ID | *(from AWS SDK cred chain)* |
+| `CLIO_S3_SECRET_KEY` | Secret access key | *(from AWS SDK cred chain)* |
 
 **S3-compatible services tested against:**
 - AWS S3
@@ -540,8 +540,8 @@ User: styx push secrets
 
 ## 10. Open Questions / Future Work
 
-- **Encryption at rest?** — Could add `age`-based encryption before S3 upload (`styx push --encrypt`)
-- **Key expiration / TTL?** — `styx set foo bar --ttl 24h`
-- **JSON output?** — `styx list --json` for scripting
-- **Watch mode?** — `styx watch @DB` to tail changes (like `watch ls`)
+- **Encryption at rest?** — Could add `age`-based encryption before S3 upload (`clio push --encrypt`)
+- **Key expiration / TTL?** — `clio set foo bar --ttl 24h`
+- **JSON output?** — `clio list --json` for scripting
+- **Watch mode?** — `clio watch @DB` to tail changes (like `watch ls`)
 - **Multi-region sync?** — Push to multiple S3 endpoints for redundancy

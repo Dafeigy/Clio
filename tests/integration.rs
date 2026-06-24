@@ -1,16 +1,16 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-/// Helper: run styx in a specific data dir.
-fn styx_in_dir(data_dir: Option<&str>, args: &[&str]) -> (String, String, i32) {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_styx"));
+/// Helper: run clio in a specific data dir.
+fn clio_in_dir(data_dir: Option<&str>, args: &[&str]) -> (String, String, i32) {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_clio"));
     cmd.args(args);
 
     if let Some(dir) = data_dir {
-        cmd.env("STYX_DATA_DIR", dir);
+        cmd.env("CLIO_DATA_DIR", dir);
     }
 
-    let output = cmd.output().expect("failed to run styx");
+    let output = cmd.output().expect("failed to run clio");
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -19,26 +19,26 @@ fn styx_in_dir(data_dir: Option<&str>, args: &[&str]) -> (String, String, i32) {
     (stdout, stderr, code)
 }
 
-/// Helper: run styx with stdin piped.
-fn styx_with_stdin(data_dir: Option<&str>, args: &[&str], stdin_data: &[u8]) -> (String, String, i32) {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_styx"));
+/// Helper: run clio with stdin piped.
+fn clio_with_stdin(data_dir: Option<&str>, args: &[&str], stdin_data: &[u8]) -> (String, String, i32) {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_clio"));
     cmd.args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
     if let Some(dir) = data_dir {
-        cmd.env("STYX_DATA_DIR", dir);
+        cmd.env("CLIO_DATA_DIR", dir);
     }
 
-    let mut child = cmd.spawn().expect("failed to spawn styx");
+    let mut child = cmd.spawn().expect("failed to spawn clio");
 
     {
         let stdin = child.stdin.as_mut().expect("failed to open stdin");
         stdin.write_all(stdin_data).expect("failed to write to stdin");
     }
 
-    let output = child.wait_with_output().expect("failed to wait on styx");
+    let output = child.wait_with_output().expect("failed to wait on clio");
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     let code = output.status.code().unwrap_or(-1);
@@ -53,10 +53,10 @@ fn test_set_and_get() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    let (_, _, code) = styx_in_dir(Some(&d), &["set", "test-key", "hello"]);
+    let (_, _, code) = clio_in_dir(Some(&d), &["set", "test-key", "hello"]);
     assert_eq!(code, 0, "set failed");
 
-    let (stdout, _, code) = styx_in_dir(Some(&d), &["get", "test-key"]);
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["get", "test-key"]);
     assert_eq!(code, 0, "get failed");
     assert!(stdout.contains("hello"), "got: {}", stdout);
 }
@@ -66,14 +66,14 @@ fn test_set_stdin() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    let (_, _, code) = styx_with_stdin(
+    let (_, _, code) = clio_with_stdin(
         Some(&d),
         &["set", "stdin-key"],
         b"from stdin\nwith newlines",
     );
     assert_eq!(code, 0, "set stdin failed");
 
-    let (stdout, _, code) = styx_in_dir(Some(&d), &["get", "stdin-key"]);
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["get", "stdin-key"]);
     assert_eq!(code, 0);
     assert!(stdout.contains("from stdin"));
     assert!(stdout.contains("with newlines"));
@@ -84,7 +84,7 @@ fn test_get_nonexistent() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    let (_, stderr, code) = styx_in_dir(Some(&d), &["get", "no-such-key"]);
+    let (_, stderr, code) = clio_in_dir(Some(&d), &["get", "no-such-key"]);
     assert_ne!(code, 0);
     assert!(stderr.contains("not found"), "stderr: {}", stderr);
 }
@@ -96,11 +96,11 @@ fn test_delete() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    styx_in_dir(Some(&d), &["set", "del-key", "bye"]);
-    let (_, _, code) = styx_in_dir(Some(&d), &["delete", "del-key"]);
+    clio_in_dir(Some(&d), &["set", "del-key", "bye"]);
+    let (_, _, code) = clio_in_dir(Some(&d), &["delete", "del-key"]);
     assert_eq!(code, 0, "delete failed");
 
-    let (_, stderr, code) = styx_in_dir(Some(&d), &["get", "del-key"]);
+    let (_, stderr, code) = clio_in_dir(Some(&d), &["get", "del-key"]);
     assert_ne!(code, 0);
     assert!(stderr.contains("not found"));
 }
@@ -110,8 +110,8 @@ fn test_delete_alias() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    styx_in_dir(Some(&d), &["set", "rm-key", "x"]);
-    let (_, _, code) = styx_in_dir(Some(&d), &["rm", "rm-key"]);
+    clio_in_dir(Some(&d), &["set", "rm-key", "x"]);
+    let (_, _, code) = clio_in_dir(Some(&d), &["rm", "rm-key"]);
     assert_eq!(code, 0);
 }
 
@@ -122,10 +122,10 @@ fn test_list() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    styx_in_dir(Some(&d), &["set", "list-a", "alpha"]);
-    styx_in_dir(Some(&d), &["set", "list-b", "bravo"]);
+    clio_in_dir(Some(&d), &["set", "list-a", "alpha"]);
+    clio_in_dir(Some(&d), &["set", "list-b", "bravo"]);
 
-    let (stdout, _, code) = styx_in_dir(Some(&d), &["list"]);
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["list"]);
     assert_eq!(code, 0);
     assert!(stdout.contains("list-a"));
     assert!(stdout.contains("alpha"));
@@ -138,10 +138,10 @@ fn test_list_keys_only() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    styx_in_dir(Some(&d), &["set", "keys-a", "v1"]);
-    styx_in_dir(Some(&d), &["set", "keys-b", "v2"]);
+    clio_in_dir(Some(&d), &["set", "keys-a", "v1"]);
+    clio_in_dir(Some(&d), &["set", "keys-b", "v2"]);
 
-    let (stdout, _, code) = styx_in_dir(Some(&d), &["list", "--keys-only"]);
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["list", "--keys-only"]);
     assert_eq!(code, 0);
     assert!(stdout.contains("keys-a"));
     assert!(stdout.contains("keys-b"));
@@ -153,11 +153,11 @@ fn test_list_reverse() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    styx_in_dir(Some(&d), &["set", "ra", "1"]);
-    styx_in_dir(Some(&d), &["set", "rb", "2"]);
-    styx_in_dir(Some(&d), &["set", "rc", "3"]);
+    clio_in_dir(Some(&d), &["set", "ra", "1"]);
+    clio_in_dir(Some(&d), &["set", "rb", "2"]);
+    clio_in_dir(Some(&d), &["set", "rc", "3"]);
 
-    let (stdout, _, code) = styx_in_dir(Some(&d), &["list", "--reverse"]);
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["list", "--reverse"]);
     assert_eq!(code, 0);
 
     let rc_pos = stdout.find("rc").unwrap();
@@ -170,10 +170,10 @@ fn test_list_values_only() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    styx_in_dir(Some(&d), &["set", "val-x", "xv"]);
-    styx_in_dir(Some(&d), &["set", "val-y", "yv"]);
+    clio_in_dir(Some(&d), &["set", "val-x", "xv"]);
+    clio_in_dir(Some(&d), &["set", "val-y", "yv"]);
 
-    let (stdout, _, code) = styx_in_dir(Some(&d), &["list", "--values-only"]);
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["list", "--values-only"]);
     assert_eq!(code, 0);
     assert!(stdout.contains("xv"));
     assert!(stdout.contains("yv"));
@@ -187,10 +187,10 @@ fn test_list_dbs() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    styx_in_dir(Some(&d), &["set", "k1@work", "v1"]);
-    styx_in_dir(Some(&d), &["set", "k2@personal", "v2"]);
+    clio_in_dir(Some(&d), &["set", "k1@work", "v1"]);
+    clio_in_dir(Some(&d), &["set", "k2@personal", "v2"]);
 
-    let (stdout, _, code) = styx_in_dir(Some(&d), &["list-dbs"]);
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["list-dbs"]);
     assert_eq!(code, 0);
     assert!(stdout.contains("@work"));
     assert!(stdout.contains("@personal"));
@@ -201,8 +201,8 @@ fn test_ls_db_alias() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    styx_in_dir(Some(&d), &["set", "k@lsdb", "v"]);
-    let (stdout, _, code) = styx_in_dir(Some(&d), &["ls-db"]);
+    clio_in_dir(Some(&d), &["set", "k@lsdb", "v"]);
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["ls-db"]);
     assert_eq!(code, 0);
     assert!(stdout.contains("@lsdb"));
 }
@@ -214,8 +214,8 @@ fn test_default_db() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    styx_in_dir(Some(&d), &["set", "plain-key", "default-db-value"]);
-    let (stdout, _, code) = styx_in_dir(Some(&d), &["get", "plain-key"]);
+    clio_in_dir(Some(&d), &["set", "plain-key", "default-db-value"]);
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["get", "plain-key"]);
     assert_eq!(code, 0);
     assert!(stdout.contains("default-db-value"));
 }
@@ -225,21 +225,21 @@ fn test_case_insensitive_keys() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    styx_in_dir(Some(&d), &["set", "MiXeDcAsE", "mixed-value"]);
-    let (stdout, _, code) = styx_in_dir(Some(&d), &["get", "mixedcase"]);
+    clio_in_dir(Some(&d), &["set", "MiXeDcAsE", "mixed-value"]);
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["get", "mixedcase"]);
     assert_eq!(code, 0);
     assert!(stdout.contains("mixed-value"));
 }
 
 // ── binary handling ──
 
-/// Helper: run styx and capture raw stdout bytes.
-fn styx_raw_stdout(data_dir: &str, args: &[&str]) -> (Vec<u8>, String, i32) {
-    let output = Command::new(env!("CARGO_BIN_EXE_styx"))
+/// Helper: run clio and capture raw stdout bytes.
+fn clio_raw_stdout(data_dir: &str, args: &[&str]) -> (Vec<u8>, String, i32) {
+    let output = Command::new(env!("CARGO_BIN_EXE_clio"))
         .args(args)
-        .env("STYX_DATA_DIR", data_dir)
+        .env("CLIO_DATA_DIR", data_dir)
         .output()
-        .expect("failed to run styx");
+        .expect("failed to run clio");
 
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     let code = output.status.code().unwrap_or(-1);
@@ -252,10 +252,10 @@ fn test_binary_value_show_binary() {
     let d = dir.path().to_string_lossy();
 
     let binary = vec![0x00, 0x01, 0x02, 0xFF, 0xFE];
-    styx_with_stdin(Some(&d), &["set", "binary"], &binary);
+    clio_with_stdin(Some(&d), &["set", "binary"], &binary);
 
     // With --show-binary, raw bytes are printed.
-    let (stdout, _, code) = styx_raw_stdout(&d, &["get", "binary", "--show-binary"]);
+    let (stdout, _, code) = clio_raw_stdout(&d, &["get", "binary", "--show-binary"]);
     assert_eq!(code, 0);
     assert_eq!(stdout, binary, "raw bytes should match");
 }
@@ -267,16 +267,16 @@ fn test_delete_db_multiple() {
     let dir = tempfile::tempdir().unwrap();
     let d = dir.path().to_string_lossy();
 
-    styx_in_dir(Some(&d), &["set", "x@db1", "1"]);
-    styx_in_dir(Some(&d), &["set", "y@db1", "2"]);
-    styx_in_dir(Some(&d), &["set", "z@db2", "3"]);
+    clio_in_dir(Some(&d), &["set", "x@db1", "1"]);
+    clio_in_dir(Some(&d), &["set", "y@db1", "2"]);
+    clio_in_dir(Some(&d), &["set", "z@db2", "3"]);
 
     // Delete db1 with confirmation
-    let (_, _, code) = styx_with_stdin(Some(&d), &["delete-db", "db1"], b"y\n");
+    let (_, _, code) = clio_with_stdin(Some(&d), &["delete-db", "db1"], b"y\n");
     assert_eq!(code, 0);
 
     // db2 should still exist
-    let (stdout, _, code) = styx_in_dir(Some(&d), &["list", "@db2"]);
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["list", "@db2"]);
     assert_eq!(code, 0);
     assert!(stdout.contains("z"));
 }

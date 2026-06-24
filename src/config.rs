@@ -2,9 +2,9 @@ use anyhow::Context;
 use serde::Deserialize;
 use std::path::PathBuf;
 
-/// Top-level styx configuration, loaded from a TOML file.
+/// Top-level clio configuration, loaded from a TOML file.
 #[derive(Deserialize, Default)]
-pub struct StyxConfig {
+pub struct ClioConfig {
     #[serde(default)]
     pub s3: S3FileConfig,
 }
@@ -44,10 +44,10 @@ impl S3FileConfig {
 
 /// Auto-generated template — optional fields have their defaults pre-filled,
 /// required fields are left empty for the user to fill in.
-const CONFIG_TEMPLATE: &str = r#"# styx configuration
+const CONFIG_TEMPLATE: &str = r#"# clio configuration
 #
-# Environment variables (STYX_S3_*) take precedence over values set here.
-# Fill in the required fields below, then run `styx sync-status` to verify.
+# Environment variables (CLIO_S3_*) take precedence over values set here.
+# Fill in the required fields below, then run `clio sync-status` to verify.
 
 [s3]
 # S3-compatible endpoint (default shown)
@@ -57,7 +57,7 @@ endpoint = "https://s3.amazonaws.com"
 bucket = ""
 
 # Key prefix inside the bucket
-prefix = "styx/"
+prefix = "clio/"
 
 # AWS / S3 region
 region = "us-east-1"
@@ -67,19 +67,19 @@ access_key = ""
 secret_key = ""
 "#;
 
-impl StyxConfig {
+impl ClioConfig {
     /// Resolve the path to the config file.
     ///
-    /// Respects `STYX_CONFIG` env var for custom locations.
-    /// Falls back to the XDG config directory: `~/.config/styx/config.toml`.
+    /// Respects `CLIO_CONFIG` env var for custom locations.
+    /// Falls back to the XDG config directory: `~/.config/clio/config.toml`.
     pub fn config_path() -> anyhow::Result<PathBuf> {
-        if let Ok(custom) = std::env::var("STYX_CONFIG") {
+        if let Ok(custom) = std::env::var("CLIO_CONFIG") {
             return Ok(PathBuf::from(custom));
         }
 
         let dir = dirs::config_dir()
             .ok_or_else(|| anyhow::anyhow!("could not determine config directory"))?
-            .join("styx");
+            .join("clio");
 
         Ok(dir.join("config.toml"))
     }
@@ -113,7 +113,7 @@ impl StyxConfig {
 
     /// Write a fresh template to the config path (always overwrites).
     ///
-    /// Used by `styx init-config`.
+    /// Used by `clio init-config`.
     pub fn init_template() -> anyhow::Result<PathBuf> {
         let path = Self::config_path()?;
         Self::write_template(&path)?;

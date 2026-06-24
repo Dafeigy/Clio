@@ -1,13 +1,13 @@
 [package]
-name = "styx"
+name = "clio"
 version = "0.1.0"
 edition = "2021"
 description = "A personal key-value store with cross-device S3 sync"
 license = "MIT"
-repository = "https://github.com/cybersh1t/styx"
+repository = "https://github.com/cybersh1t/clio"
 
 [[bin]]
-name = "styx"
+name = "clio"
 path = "src/main.rs"
 
 [dependencies]

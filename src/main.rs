@@ -12,8 +12,8 @@ async fn main() {
     let args: Vec<String> = std::env::args().collect();
 
     // Show a custom welcome / help page when:
-    // - bare `styx` (no args)
-    // - `styx --help` or `styx -h` (only these flags, no subcommand)
+    // - bare `clio` (no args)
+    // - `clio --help` or `clio -h` (only these flags, no subcommand)
     if args.len() <= 1 {
         cli::help::print_help();
         return;
@@ -27,7 +27,7 @@ async fn main() {
                 return;
             }
             "--version" | "-V" => {
-                println!("styx {}", env!("CARGO_PKG_VERSION"));
+                println!("clio {}", env!("CARGO_PKG_VERSION"));
                 return;
             }
             _ => {}
