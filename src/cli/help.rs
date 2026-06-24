@@ -21,8 +21,9 @@ fn color_usage(text: &str, base: Style, bracket: Style) -> String {
 
         match pos {
             Some(p) => {
-                out.push_str(&styled(&rest[..p], if in_bracket { bracket } else { base }));
-                rest = &rest[p..];
+                let (chunk, remainder) = rest.split_at(p);
+                out.push_str(&styled(chunk, if in_bracket { bracket } else { base }));
+                rest = remainder;
                 in_bracket = !in_bracket;
             }
             None => {
