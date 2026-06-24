@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 ///
 /// Returns a message describing what was done.
 pub async fn push_db(name: &str, force: bool) -> anyhow::Result<String> {
-    let backend = S3Backend::from_env()?;
+    let backend = S3Backend::load()?;
     let store = Store::open(name)?;
     let local_checksum = store.checksum()?;
     let local_size = store.file_size()?;
@@ -72,7 +72,7 @@ pub async fn push_db(name: &str, force: bool) -> anyhow::Result<String> {
 
 /// Pull a single database from S3.
 pub async fn pull_db(name: &str, force: bool) -> anyhow::Result<String> {
-    let backend = S3Backend::from_env()?;
+    let backend = S3Backend::load()?;
     let remote = backend
         .get_manifest()
         .await?
@@ -111,7 +111,7 @@ pub async fn pull_db(name: &str, force: bool) -> anyhow::Result<String> {
 
 /// Bidirectional sync: push local changes, pull remote changes.
 pub async fn sync_all() -> anyhow::Result<String> {
-    let backend = S3Backend::from_env()?;
+    let backend = S3Backend::load()?;
     let remote = backend.get_manifest().await?;
     let local_dbs = paths::list_dbs()?;
 
@@ -238,7 +238,7 @@ pub async fn sync_all() -> anyhow::Result<String> {
 
 /// Show a diff between local and remote state.
 pub async fn sync_status() -> anyhow::Result<String> {
-    let backend = S3Backend::from_env()?;
+    let backend = S3Backend::load()?;
     let remote = backend.get_manifest().await?;
     let local_dbs = paths::list_dbs()?;
 

@@ -1,4 +1,5 @@
 mod cli;
+mod config;
 mod store;
 mod sync;
 mod util;
@@ -21,6 +22,7 @@ async fn main() {
         Command::Pull(args) => cli::sync::run_pull(args).await,
         Command::Sync(args) => cli::sync::run_sync(args).await,
         Command::SyncStatus => cli::sync::run_sync_status().await,
+        Command::InitConfig => cli::config::run_init_config(),
     };
 
     if let Err(err) = result {

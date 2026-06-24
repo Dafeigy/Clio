@@ -74,6 +74,7 @@ KEY@DB
 | `styx pull [@DB]` | — | Download remote DB from S3 |
 | `styx sync` | — | Bidirectional sync of all DBs |
 | `styx sync-status` | — | Show local vs remote diff |
+| `styx init-config` | — | Create a config file template |
 
 ### List Flags
 
@@ -91,13 +92,31 @@ Styx syncs databases to S3-compatible object storage. Each database is stored as
 
 ### Configuration
 
-Set these environment variables:
+Create a config file with `styx init-config`:
 
 ```bash
-export STYX_S3_ENDPOINT="https://s3.amazonaws.com"  # or your S3-compatible endpoint
+styx init-config
+# → ~/.config/styx/config.toml
+```
+
+Then edit the file and uncomment the fields you need:
+
+```toml
+# ~/.config/styx/config.toml
+[s3]
+endpoint = "https://s3.amazonaws.com"   # or your S3-compatible endpoint
+bucket = "my-styx-data"
+#prefix = "styx/"                        # optional, default: styx/
+#region = "us-east-1"                    # optional, default: us-east-1
+access_key = "AKIA..."
+secret_key = "..."
+```
+
+Alternatively, you can still use environment variables (which take precedence over the config file):
+
+```bash
+export STYX_S3_ENDPOINT="https://s3.amazonaws.com"
 export STYX_S3_BUCKET="my-styx-data"
-export STYX_S3_PREFIX="styx/"                        # optional, default: styx/
-export STYX_S3_REGION="us-east-1"                    # optional, default: us-east-1
 export STYX_S3_ACCESS_KEY="AKIA..."
 export STYX_S3_SECRET_KEY="..."
 ```

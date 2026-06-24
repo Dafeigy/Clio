@@ -4,7 +4,12 @@ use s3::creds::Credentials;
 use s3::{Bucket, Region};
 use std::path::Path;
 
-/// Configuration for the S3 backend, resolved from environment variables.
+/// Configuration for the S3 backend.
+///
+/// Values are resolved with this priority (highest first):
+/// 1. `STYX_S3_*` environment variables
+/// 2. Config file (`~/.config/styx/config.toml`)
+/// 3. Built-in defaults (endpoint, prefix, region)
 pub struct S3Config {
     pub endpoint: String,
     pub bucket_name: String,
@@ -15,28 +20,65 @@ pub struct S3Config {
 }
 
 impl S3Config {
-    /// Build config from STYX_S3_* environment variables.
-    pub fn from_env() -> anyhow::Result<Self> {
-        let endpoint = std::env::var("STYX_S3_ENDPOINT")
-            .unwrap_or_else(|_| "https://s3.amazonaws.com".to_string());
+    /// Load config: config file first, then override with any set env vars.
+    pub fn load() -> anyhow::Result<Self> {
+        let file_cfg = crate::config::StyxConfig::load()?;
 
-        let bucket_name = std::env::var("STYX_S3_BUCKET")
-            .context("STYX_S3_BUCKET is required for sync operations")?;
+        // Each value: env var → config file → hard-coded default
+        let endpoint = resolve(
+            "STYX_S3_ENDPOINT",
+            file_cfg.s3.endpoint.as_deref(),
+            "https://s3.amazonaws.com",
+        );
 
-        let prefix = std::env::var("STYX_S3_PREFIX")
-            .unwrap_or_else(|_| "styx/".to_string());
+        let bucket_name = resolve_required(
+            "STYX_S3_BUCKET",
+            file_cfg.s3.bucket.as_deref(),
+            "S3 bucket is required. Set it in ~/.config/styx/config.toml ([s3] bucket) or the STYX_S3_BUCKET env var.",
+        )?;
 
-        let region = std::env::var("STYX_S3_REGION")
-            .unwrap_or_else(|_| "us-east-1".to_string());
+        let prefix = resolve(
+            "STYX_S3_PREFIX",
+            file_cfg.s3.prefix.as_deref(),
+            "styx/",
+        );
 
-        let access_key = std::env::var("STYX_S3_ACCESS_KEY")
-            .context("STYX_S3_ACCESS_KEY is required for sync operations")?;
+        let region = resolve(
+            "STYX_S3_REGION",
+            file_cfg.s3.region.as_deref(),
+            "us-east-1",
+        );
 
-        let secret_key = std::env::var("STYX_S3_SECRET_KEY")
-            .context("STYX_S3_SECRET_KEY is required for sync operations")?;
+        let access_key = resolve_required(
+            "STYX_S3_ACCESS_KEY",
+            file_cfg.s3.access_key.as_deref(),
+            "S3 access key is required. Set it in ~/.config/styx/config.toml ([s3] access_key) or the STYX_S3_ACCESS_KEY env var.",
+        )?;
+
+        let secret_key = resolve_required(
+            "STYX_S3_SECRET_KEY",
+            file_cfg.s3.secret_key.as_deref(),
+            "S3 secret key is required. Set it in ~/.config/styx/config.toml ([s3] secret_key) or the STYX_S3_SECRET_KEY env var.",
+        )?;
 
         Ok(Self { endpoint, bucket_name, prefix, region, access_key, secret_key })
     }
+}
+
+/// Pick the first of: env var → config file value → default.
+fn resolve(env_key: &str, file_val: Option<&str>, default: &str) -> String {
+    std::env::var(env_key)
+        .ok()
+        .or_else(|| file_val.map(String::from))
+        .unwrap_or_else(|| default.to_string())
+}
+
+/// Like `resolve`, but returns an error when no value is found.
+fn resolve_required(env_key: &str, file_val: Option<&str>, hint: &str) -> anyhow::Result<String> {
+    std::env::var(env_key)
+        .ok()
+        .or_else(|| file_val.map(String::from))
+        .with_context(|| hint.to_string())
 }
 
 /// An S3-compatible storage backend.
@@ -46,9 +88,9 @@ pub struct S3Backend {
 }
 
 impl S3Backend {
-    /// Create a new S3 backend from environment config.
-    pub fn from_env() -> anyhow::Result<Self> {
-        let config = S3Config::from_env()?;
+    /// Create a new S3 backend from config file + env overrides.
+    pub fn load() -> anyhow::Result<Self> {
+        let config = S3Config::load()?;
 
         let region = Region::Custom {
             region: config.region,

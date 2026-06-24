@@ -4,6 +4,7 @@ pub mod delete;
 pub mod list;
 pub mod db;
 pub mod sync;
+pub mod config;
 
 use clap::{Parser, Subcommand};
 
@@ -52,6 +53,9 @@ pub enum Command {
 
     /// Show sync status (local vs remote diff).
     SyncStatus,
+
+    /// Create a config file template at ~/.config/styx/config.toml.
+    InitConfig,
 }
 
 /// Parses a KEY@DB argument into (key_bytes, db_name).
