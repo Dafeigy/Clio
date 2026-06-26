@@ -1,4 +1,5 @@
 use redb::{Database, ReadableTable, TableDefinition};
+use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
 
 use crate::util::paths;
@@ -15,11 +16,15 @@ pub struct Store {
 
 impl Store {
     /// Open (or create) a named database.
+    ///
+    /// If an existing database file is corrupted (e.g. from a previous crash),
+    /// it is deleted and recreated with a warning. This handles redb panics
+    /// that can occur when the file has a valid magic number but corrupt layout.
     pub fn open(name: &str) -> anyhow::Result<Self> {
         let name = if name.is_empty() { "default" } else { name };
         let path = paths::db_path(name)?;
 
-        let db = Database::create(&path)?;
+        let db = Self::open_db(&name, &path)?;
 
         // Ensure the table exists.
         {
@@ -31,6 +36,54 @@ impl Store {
         }
 
         Ok(Self { db, name: name.to_string(), path })
+    }
+
+    /// Try to open the database file, recovering from corruption if needed.
+    fn open_db(name: &str, path: &PathBuf) -> anyhow::Result<Database> {
+        if path.exists() {
+            // Try opening the existing file. redb may panic if the file has a
+            // valid magic number but corrupt layout data (e.g. crash during init).
+            match Self::try_open(path) {
+                Ok(db) => return Ok(db),
+                Err(e) => {
+                    // If this was a redb panic (not a normal error), the message
+                    // is generic; log a clear warning either way.
+                    eprintln!(
+                        "Warning: database @{name} at {} appears corrupted, recreating it. ({e})",
+                        path.display()
+                    );
+                    std::fs::remove_file(path)?;
+                }
+            }
+        }
+
+        // Fresh create (file doesn't exist or was just removed).
+        match Self::try_open(path) {
+            Ok(db) => Ok(db),
+            Err(e) => Err(anyhow::anyhow!(
+                "Failed to create database @{name} at {}: {e}",
+                path.display()
+            )),
+        }
+    }
+
+    /// Call `Database::create` (which opens-or-creates), catching panics.
+    fn try_open(path: &PathBuf) -> Result<Database, anyhow::Error> {
+        let path = path.clone();
+        match panic::catch_unwind(AssertUnwindSafe(|| Database::create(&path))) {
+            Ok(Ok(db)) => Ok(db),
+            Ok(Err(e)) => Err(e.into()),
+            Err(panic_payload) => {
+                let msg = if let Some(s) = panic_payload.downcast_ref::<String>() {
+                    s.clone()
+                } else if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                    s.to_string()
+                } else {
+                    "redb panicked".to_string()
+                };
+                Err(anyhow::anyhow!("{msg}"))
+            }
+        }
     }
 
     /// Returns the database name.

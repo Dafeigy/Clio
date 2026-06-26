@@ -190,7 +190,10 @@ pub async fn sync_all() -> anyhow::Result<String> {
                 messages.push(format!("  Pushed @{} ({:.1} KB)", db_name, size as f64 / 1024.0));
             }
             SyncState::RemoteOnly | SyncState::RemoteNewer => {
-                // Pull remote.
+                // Pull remote. Must drop any open store handle before
+                // overwriting the file — on Windows, redb holds a lock
+                // that prevents writing to the same .redb file.
+                drop(store);
                 let entry = remote_entry.unwrap();
                 let local_path = paths::db_path(db_name)?;
                 backend.download_db(db_name, &local_path).await?;
@@ -199,6 +202,7 @@ pub async fn sync_all() -> anyhow::Result<String> {
                     db_name,
                     entry.size_bytes as f64 / 1024.0
                 ));
+                // store was moved into drop(); can't be used below.
             }
             SyncState::Diverged => {
                 messages.push(format!(

@@ -166,6 +166,10 @@ impl S3Backend {
     }
 
     /// Download a database file from S3 to a local path.
+    ///
+    /// Writes to a temporary file first, then atomically renames to the
+    /// target. This prevents partial writes (from crashes, network errors,
+    /// or Windows file locking) from corrupting the database file.
     pub async fn download_db(&self, name: &str, dest: &Path) -> anyhow::Result<()> {
         let key = self.db_key(name);
 
@@ -176,8 +180,13 @@ impl S3Backend {
             .map_err(|e| anyhow::anyhow!("S3 error downloading @{}: {}", name, e))?;
         let bytes: Vec<u8> = data.to_vec();
 
-        std::fs::write(dest, &bytes)
-            .with_context(|| format!("failed to write downloaded database to {}", dest.display()))?;
+        // Write to a temp file, then atomically rename.
+        // On NTFS, `rename` is atomic for files on the same volume.
+        let tmp = dest.with_extension("redb.tmp");
+        std::fs::write(&tmp, &bytes)
+            .with_context(|| format!("failed to write downloaded database to {}", tmp.display()))?;
+        std::fs::rename(&tmp, dest)
+            .with_context(|| format!("failed to install downloaded database to {}", dest.display()))?;
 
         Ok(())
     }
