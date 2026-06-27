@@ -40,7 +40,12 @@ fn help_styles() -> Styles {
 )]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Command,
+    pub command: Option<Command>,
+
+    /// Get value by its 0-based list index (uses default db, forward order).
+    /// Use after `clio list` to identify the desired key.
+    #[arg(short = 'i', long = "index", value_name = "N")]
+    pub index: Option<usize>,
 }
 
 #[derive(Subcommand)]

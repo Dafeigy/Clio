@@ -109,6 +109,11 @@ pub fn print_help() {
     );
     let _ = writeln!(
         std::io::stdout(),
+        "    {:<23} Get value by list index (default db)",
+        styled("-i --index N", green_style),
+    );
+    let _ = writeln!(
+        std::io::stdout(),
         "    {:<23} Version for clio",
         styled("-V --version", green_style),
     );

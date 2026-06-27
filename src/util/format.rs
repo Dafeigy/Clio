@@ -1,27 +1,70 @@
 use std::io::{self, IsTerminal};
 
-/// Prints key-value pairs to stdout, handling binary data gracefully.
+/// Print a key-value pair with a right-aligned numeric index and key-column
+/// alignment so that values line up across rows.
 ///
-/// When stdout is a terminal and `show_binary` is false, binary values
-/// are replaced with "(omitted binary data)". When piped, all data is
-/// passed through raw.
-pub fn print_kv(key: &[u8], value: &[u8], delimiter: &str, show_binary: bool, max_value_width: usize) {
+/// `index_width` is the number of digits in the largest index (used to
+/// right-align indices). `max_key_width` is the display width of the
+/// longest key (used to space-pad keys so values start at the same column).
+pub fn print_indexed_kv(
+    index: usize,
+    index_width: usize,
+    key: &[u8],
+    max_key_width: usize,
+    value: &[u8],
+    delimiter: &str,
+    show_binary: bool,
+    max_value_width: usize,
+) {
     if show_binary || !io::stdout().is_terminal() {
-        // When piped or --show-binary: pass everything through, never truncate
+        // Piped or --show-binary: passthrough raw bytes, no truncation.
+        // Key-column alignment still applies.
+        let key_str = String::from_utf8_lossy(key);
         println!(
-            "{}{delimiter}{}",
-            String::from_utf8_lossy(key),
-            String::from_utf8_lossy(value)
+            "{:>iw$} {:<kw$}{delimiter}{}",
+            index,
+            key_str,
+            String::from_utf8_lossy(value),
+            iw = index_width,
+            kw = max_key_width,
         );
     } else {
         let key_str = safe_string(key);
         let val_str = safe_string(value);
         println!(
-            "{}{delimiter}{}",
+            "{:>iw$} {:<kw$}{delimiter}{}",
+            index,
             key_str,
-            truncate_value(&val_str, max_value_width)
+            truncate_value(&val_str, max_value_width),
+            iw = index_width,
+            kw = max_key_width,
         );
     }
+}
+
+/// Print a key with a right-aligned index prefix.
+pub fn print_indexed_key(index: usize, index_width: usize, key: &[u8]) {
+    println!("{:>iw$} {}", index, safe_string(key), iw = index_width);
+}
+
+/// Print a value with a right-aligned index prefix.
+pub fn print_indexed_value(index: usize, index_width: usize, value: &[u8]) {
+    let stdout = io::stdout();
+    if !stdout.is_terminal() {
+        use std::io::Write;
+        let mut handle = stdout.lock();
+        let _ = write!(handle, "{:>iw$} ", index, iw = index_width);
+        let _ = handle.write_all(value);
+        let _ = handle.write_all(b"\n");
+    } else {
+        println!("{:>iw$} {}", index, safe_string(value), iw = index_width);
+    }
+}
+
+/// Return the terminal display width of a key's safe representation.
+/// Used to compute alignment padding in list output.
+pub fn display_width(data: &[u8]) -> usize {
+    safe_string(data).chars().count()
 }
 
 /// Truncate a value string to `max_width` visible characters, appending "..."
@@ -49,11 +92,6 @@ pub fn print_value(data: &[u8]) {
     } else {
         println!("{}", safe_string(data));
     }
-}
-
-/// Prints a key only.
-pub fn print_key(key: &[u8]) {
-    println!("{}", safe_string(key));
 }
 
 /// Returns a display-safe string: if valid UTF-8, return as-is;

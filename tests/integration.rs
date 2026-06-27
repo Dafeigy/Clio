@@ -180,6 +180,73 @@ fn test_list_values_only() {
     assert!(!stdout.contains("val-x"));
 }
 
+#[test]
+fn test_list_has_indices() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = dir.path().to_string_lossy();
+
+    clio_in_dir(Some(&d), &["set", "a", "1"]);
+    clio_in_dir(Some(&d), &["set", "b", "2"]);
+
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["list"]);
+    assert_eq!(code, 0);
+    // Each line should start with "0 " or "1 " (index + space)
+    assert!(stdout.contains("0 "), "expected index 0 in: {}", stdout);
+    assert!(stdout.contains("1 "), "expected index 1 in: {}", stdout);
+    // Make sure keys and values still appear
+    assert!(stdout.contains("a"));
+    assert!(stdout.contains("b"));
+    assert!(stdout.contains("1"));
+    assert!(stdout.contains("2"));
+}
+
+#[test]
+fn test_list_aligned_columns() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = dir.path().to_string_lossy();
+
+    // Keys of different lengths — values should start at the same column
+    clio_in_dir(Some(&d), &["set", "k", "short-val"]);
+    clio_in_dir(Some(&d), &["set", "long-key-name", "long-val"]);
+
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["list", "--delimiter", "|"]);
+    assert_eq!(code, 0);
+
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 2, "expected 2 lines, got: {:?}", lines);
+
+    // The delimiter | should appear at the same column in both lines
+    let col0 = lines[0].find('|').unwrap();
+    let col1 = lines[1].find('|').unwrap();
+    assert_eq!(col0, col1, "values not aligned: line0 col={col0}, line1 col={col1}\nlines: {:?}", lines);
+}
+
+#[test]
+fn test_index_get() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = dir.path().to_string_lossy();
+
+    clio_in_dir(Some(&d), &["set", "first", "alpha"]);
+    clio_in_dir(Some(&d), &["set", "second", "bravo"]);
+    clio_in_dir(Some(&d), &["set", "third", "charlie"]);
+
+    let (stdout, _, code) = clio_in_dir(Some(&d), &["-i", "1"]);
+    assert_eq!(code, 0);
+    assert!(stdout.contains("bravo"), "expected 'bravo', got: {}", stdout);
+}
+
+#[test]
+fn test_index_out_of_range() {
+    let dir = tempfile::tempdir().unwrap();
+    let d = dir.path().to_string_lossy();
+
+    clio_in_dir(Some(&d), &["set", "only", "value"]);
+
+    let (_, stderr, code) = clio_in_dir(Some(&d), &["-i", "99"]);
+    assert_ne!(code, 0);
+    assert!(stderr.contains("out of range"), "stderr: {}", stderr);
+}
+
 // ── list-dbs ──
 
 #[test]

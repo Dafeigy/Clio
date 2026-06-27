@@ -36,7 +36,25 @@ async fn main() {
 
     let cli = Cli::parse();
 
-    let result = match cli.command {
+    // Top-level `-i` / `--index` flag: get value by list index.
+    if let Some(index) = cli.index {
+        let result = cli::list::run_get_by_index(index);
+        if let Err(err) = result {
+            eprintln!("error: {:#}", err);
+            std::process::exit(1);
+        }
+        return;
+    }
+
+    let command = match cli.command {
+        Some(cmd) => cmd,
+        None => {
+            cli::help::print_help();
+            return;
+        }
+    };
+
+    let result = match command {
         Command::Set(args) => cli::set::run(args),
         Command::Get(args) => cli::get::run(args),
         Command::Delete(args) => cli::delete::run(args),
